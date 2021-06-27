@@ -1,0 +1,70 @@
+
+== cat /etc/issue ===============================================
+Linux 4819df2b1251 5.4.0-77-generic #86-Ubuntu SMP Thu Jun 17 02:35:03 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
+VERSION="18.04.5 LTS (Bionic Beaver)"
+VERSION_ID="18.04"
+VERSION_CODENAME=bionic
+
+== are we in docker =============================================
+Yes
+
+== compiler =====================================================
+c++ (Ubuntu 7.5.0-3ubuntu1~18.04) 7.5.0
+Copyright (C) 2017 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+
+== bazel =====================================================
+Build label: 4.0.0
+Build time: Thu Jan 21 07:33:24 2021 (1611214404)
+Build timestamp: 1611214404
+Build timestamp as int: 1611214404
+
+== uname -a =====================================================
+Linux 4819df2b1251 5.4.0-77-generic #86-Ubuntu SMP Thu Jun 17 02:35:03 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
+
+== check pips ===================================================
+numpy                             1.19.5
+proto-plus                        1.18.1
+protobuf                          3.17.3
+tensorflow                        2.5.0
+tensorflow-datasets               4.3.0
+tensorflow-estimator              2.5.0
+tensorflow-hub                    0.12.0
+tensorflow-metadata               1.1.0
+tensorflow-text                   2.5.0
+
+== check for virtualenv =========================================
+False
+
+== tensorflow import ============================================
+2021-06-25 13:03:31.142753: I tensorflow/stream_executor/platform/default/dso_loader.cc:53] Successfully opened dynamic library libcudart.so.11.0
+
+== env ==========================================================
+LD_LIBRARY_PATH :/usr/local/cuda-11.2/lib64:/usr/local/cuda-11.2/lib64
+DYLD_LIBRARY_PATH is unset
+
+== nvidia-smi ===================================================
+Fri Jun 25 13:03:34 2021       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 460.80       Driver Version: 460.80       CUDA Version: 11.2     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  GeForce MX150       Off  | 00000000:01:00.0 Off |                  N/A |
+| N/A   68C    P0    N/A /  N/A |    866MiB /  2002MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
++-----------------------------------------------------------------------------+
+
+== cuda libs  ===================================================
+/usr/local/cuda-11.2/targets/x86_64-linux/lib/libcudart.so.11.2.152
