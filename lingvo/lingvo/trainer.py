@@ -63,6 +63,20 @@ from tensorflow.python.tpu import training_loop as tpu_training_loop
 from tensorflow.python.tpu.ops import tpu_ops
 # pylint:enable=g-direct-tensorflow-import
 
+# Additional Flags defined for easy model training and profiling
+tf.flags.DEFINE_integer('minibatch_size', 256, 'default batch size')
+tf.flags.DEFINE_integer(
+    'micro_num', 1, 'take the entire minibatch without splitting')
+tf.flags.DEFINE_integer('num_partitions', 1, 'single partition by default')
+tf.flags.DEFINE_list('layer_partitions', [],
+                     'default number of layers per partition')
+tf.flags.DEFINE_integer('training_steps', 250,
+                        'default number of training steps')
+tf.flags.DEFINE_bool('use_profiler', False, 'perform profiling or not')
+tf.flags.DEFINE_integer('profiler_start', 0, 'which step to start profiling')
+tf.flags.DEFINE_integer('profiler_stop', 0, 'step to stop profiling')
+
+# Default flags defined in trainer.py
 tf.flags.DEFINE_string(
     'model', None, 'Name of the model class to train.'
     'Must be a model defined in the model_registry.')

@@ -23,65 +23,65 @@ from tensorflow.python.ops import io_ops
 
 
 class _MnistInputBase(base_input_generator.BaseTinyDatasetInput):
-  """Base input params for MNIST."""
+    """Base input params for MNIST."""
 
-  @classmethod
-  def Params(cls):
-    """Defaults params."""
-    p = super().Params()
-    p.data_dtype = tf.uint8
-    p.data_shape = (28, 28, 1)
-    p.label_dtype = tf.uint8
-    return p
+    @classmethod
+    def Params(cls):
+        """Defaults params."""
+        p = super().Params()
+        p.data_dtype = tf.uint8
+        p.data_shape = (28, 28, 1)
+        p.label_dtype = tf.uint8
+        return p
 
-  def _Preprocess(self, raw):
-    data = tf.stack([
-        tf.image.per_image_standardization(img) for img in tf.unstack(raw)
-    ])
-    data.set_shape(raw.shape)
-    return data
+    def _Preprocess(self, raw):
+        data = tf.stack([
+            tf.image.per_image_standardization(img) for img in tf.unstack(raw)
+        ])
+        data.set_shape(raw.shape)
+        return data
 
 
 class MnistTrainInput(_MnistInputBase):
-  """MNist training set."""
+    """MNist training set."""
 
-  @classmethod
-  def Params(cls):
-    """Defaults params."""
-    p = super().Params()
-    p.data = 'x_train'
-    p.label = 'y_train'
-    p.num_samples = 60000
-    p.batch_size = 256
-    p.repeat = True
-    return p
+    @classmethod
+    def Params(cls):
+        """Defaults params."""
+        p = super().Params()
+        p.data = 'x_train'
+        p.label = 'y_train'
+        p.num_samples = 60000
+        p.batch_size = tf.flags.FLAGS.minibatch_size
+        p.repeat = True
+        return p
 
 
 class MnistTestInput(_MnistInputBase):
-  """MNist test set."""
+    """MNist test set."""
 
-  @classmethod
-  def Params(cls):
-    """Defaults params."""
-    p = super().Params()
-    p.data = 'x_test'
-    p.label = 'y_test'
-    p.num_samples = 10000
-    p.batch_size = 256
-    p.repeat = False
-    return p
+    @classmethod
+    def Params(cls):
+        """Defaults params."""
+        p = super().Params()
+        p.data = 'x_test'
+        p.label = 'y_test'
+        p.num_samples = 10000
+        p.batch_size = tf.flags.FLAGS.minibatch_size
+        p.repeat = False
+        return p
 
 
 def FakeMnistData(tmpdir, train_size=60000, test_size=10000):
-  """Fake Mnist data for unit tests."""
-  data_path = os.path.join(tmpdir, 'ckpt')
-  with tf.Graph().as_default():
-    with tf.Session() as sess:
-      x_train = tf.ones((train_size, 28, 28, 1), dtype=tf.uint8)
-      y_train = tf.ones((train_size), dtype=tf.uint8)
-      x_test = tf.ones((test_size, 28, 28, 1), dtype=tf.uint8)
-      y_test = tf.ones((test_size), dtype=tf.uint8)
-      sess.run(
-          io_ops.save_v2(data_path, ['x_train', 'y_train', 'x_test', 'y_test'],
-                         [''] * 4, [x_train, y_train, x_test, y_test]))
-  return data_path
+    """Fake Mnist data for unit tests."""
+    data_path = os.path.join(tmpdir, 'ckpt')
+    with tf.Graph().as_default():
+        with tf.Session() as sess:
+            x_train = tf.ones((train_size, 28, 28, 1), dtype=tf.uint8)
+            y_train = tf.ones((train_size), dtype=tf.uint8)
+            x_test = tf.ones((test_size, 28, 28, 1), dtype=tf.uint8)
+            y_test = tf.ones((test_size), dtype=tf.uint8)
+            sess.run(
+                io_ops.save_v2(data_path, ['x_train', 'y_train', 'x_test', 'y_test'],
+                               [''] * 4, [x_train, y_train, x_test, y_test]))
+    return data_path

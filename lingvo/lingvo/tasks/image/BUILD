@@ -17,6 +17,7 @@ py_library(
         "//lingvo/core:plot",
         "//lingvo/core:py_utils",
         "//lingvo/core:schedule",
+        "//lingvo/tasks/image:layers",
         # Implicit numpy dependency.
     ],
 )
@@ -48,6 +49,20 @@ py_library(
         "//lingvo:compat",
         "//lingvo/core:base_input_generator",
     ],
+)
+
+py_library(
+    name = "layers",
+    srcs = ["layers.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//lingvo:compat",
+        "//lingvo/core:base_layer",
+        "//lingvo/core:gpipe",
+        "//lingvo/core:layers",
+        "//lingvo/core:py_utils",
+        # Implicit numpy dependency.
+    ]
 )
 
 py_test(

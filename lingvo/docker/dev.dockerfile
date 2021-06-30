@@ -2,9 +2,9 @@
 #
 # LINGVO_DIR="/tmp/lingvo"  # (change to the cloned lingvo directory, e.g. "$HOME/lingvo")
 # LINGVO_DEVICE="gpu"  # (Leave empty to build and run CPU only docker)
-# docker build --tag tensorflow:lingvo $(test "$LINGVO_DEVICE" = "gpu" && echo "--build-arg base_image=nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu18.04") - < "$LINGVO_DIR/docker/dev.dockerfile"
+# docker build --tag tensorflow:lingvo $(test "$LINGVO_DEVICE" = "gpu" && echo "--build-arg base_image=nvidia/cuda:11.2.2-cudnn8-devel-ubuntu18.04") - < "$LINGVO_DIR/docker/dev.dockerfile"
 #
-# previous command gives cudnn8.1.1 
+# previous command gives cudnn8.1.1 - use devel instead of runtime image since ptxas and nvcc also installed 
 #
 # docker run $(test "$LINGVO_DEVICE" = "gpu" && echo "--runtime=nvidia") -it -v ${LINGVO_DIR}:/tmp/lingvo -v ${HOME}/.gitconfig:/home/${USER}/.gitconfig:ro -p 6006:6006 -p 8888:8888 --name lingvo tensorflow:lingvo bash
 # 

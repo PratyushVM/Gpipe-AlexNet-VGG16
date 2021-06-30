@@ -14,6 +14,7 @@ py_library(
         "//lingvo/core:program_lib",
         "//lingvo/tasks/image:classifier",
         "//lingvo/tasks/image:input_generator",
+        "//lingvo/tasks/image:layers",
     ],
 )
 
