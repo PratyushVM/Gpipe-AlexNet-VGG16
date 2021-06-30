@@ -416,7 +416,6 @@ class BaseConv2DLayer(quant_utils.QuantizableLayer):
                 # Normalize along the last dim (standard conv).
                 filter_w = tf.nn.l2_normalize(filter_w, [0, 1, 2]) * tf.reshape(
                     (theta.g + 1.0), [1, 1, 1, p.filter_shape[-1]])
-            elif len(filter_output_shape) == 2:
                 # Normalize along the last two dimensions (depthwise conv).
                 filter_w = tf.nn.l2_normalize(filter_w, [0, 1]) * tf.reshape(
                     (theta.g + 1.0), [1, 1] + filter_output_shape)
@@ -1366,10 +1365,92 @@ class FCLayer(ProjectionLayer):
 
     @classmethod
     def FPropMeta(cls, p, inputs, paddings=None, *args):
-        return super().FPropMeta(p, inputs, paddings=paddings, *args)
+        py_utils.CheckShapes((inputs,))
+        arry = inputs._shape
+        prod = 1
+        for i in range(1, len(arry)):
+            prod *= arry[i]
+        batchsize = arry[0]
+        arry2 = [batchsize, prod]
+        inputs = tshape.Shape(arry2)
+        assert inputs[-1] == p.input_dim
+        flops = 0
+        in_dim = inputs[-1]
+        other_dims = inputs.num_elements() / in_dim
+        # matmuls.
+        flops += other_dims * p.input_dim * p.output_dim * 2
+        # activations.
+        flops += other_dims * p.output_dim * activations.GetFlops(p.activation)
+        if p.has_bias:
+            flops += p.output_dim
+        out_shape = tshape.Shape(inputs[:-1] + [p.output_dim])
+        if p.batch_norm:
+            bn_meta = p.bn_params.cls.FPropMeta(
+                p.bn_params.Copy().Set(dim=p.output_dim), out_shape)
+            flops += bn_meta.flops
+        if p.weight_norm:
+            # l2 normalize + element-wise multiply.
+            flops += 2 * p.input_dim + 2 * p.input_dim * p.output_dim + 2
+
+        return py_utils.NestedMap(flops=flops, out_shapes=(out_shape,))
 
     def FProp(self, theta, inputs, paddings=None, *args):
-        return super().FProp(theta, inputs, paddings=paddings, *args)
+        """Apply projection to inputs.
+        Args:
+        theta: A `.NestedMap` object containing weights' values of this layer and
+            its children layers.
+        inputs: The inputs tensor.  Shaped [..., input_dim].
+        paddings: The paddings tensor.  Shaped [..., 1], where all but the last
+            dimension match.
+        Returns:
+        Output after applying projection, and optionally batch normalization and
+        relu non-linearity.
+        """
+        p = self.params
+        arry = inputs.shape
+        prod = 1
+        for i in range(1, len(arry)):
+            prod *= arry[i]
+        batchsize = arry[0]
+        arry2 = [batchsize, prod]
+        inputs = tf.reshape(inputs, (batchsize, prod))
+        with tf.name_scope(p.name):
+            if paddings is None:
+                paddings = tf.zeros(
+                    tf.concat([py_utils.GetShape(inputs)[:-1], [1]], axis=0),
+                    dtype=inputs.dtype)
+            w, b = self._GetWeights(theta, inputs, paddings)
+            w = self.AqtWeight(w, feature_axis=-1)
+            w = self.QWeight(w)
+
+            if p.affine_last:
+                # Reversed computation. Does not handle folding.
+                out = inputs
+                if p.batch_norm:
+                    out = self.bn.FProp(theta.bn, out, paddings)
+                if p.activation != 'NONE':
+                    if not p.is_inference:
+                        out = py_utils.CheckNumerics(out)
+                    out = activations.GetFn(p.activation)(out)
+                out = self._ApplyProjectionKernel(
+                    w, b, out, with_activation=False)
+            else:
+                # Normal ordered projection.
+                if self._is_bn_folded or not p.batch_norm:
+                    # Everything folded together. This is the only variant that supports
+                    # quantization.
+                    out = self._ApplyProjectionKernel(w, b, inputs, quant=True)
+                else:
+                    # Projection kernel(no activation fn) -> BN -> Activation fn.
+                    out = self._ApplyProjectionKernel(
+                        w, b, inputs, with_activation=False)
+                    if p.batch_norm:
+                        out = self.bn.FProp(theta.bn, out, paddings)
+                    if p.activation != 'NONE':
+                        if not p.is_inference:
+                            out = py_utils.CheckNumerics(out)
+                        out = activations.GetFn(p.activation)(out)
+                return py_utils.ApplyPadding(self.QRPadding(paddings), out)
 
 
 class FeedForwardNet(quant_utils.QuantizableLayer):
@@ -3498,8 +3579,109 @@ class SimpleFullSoftmax(SoftmaxLayer):
         logits = tshape.Shape([dim1, p.num_classes])
         return py_utils.NestedMap(flops=100, out_shapes=(logits,))
 
-    def FProp(self, theta, inputs, class_weights, class_ids=None, class_probabilities=None):
-        return super().FProp(theta, inputs, class_weights, class_ids=class_ids, class_probabilities=class_probabilities)
+    def FProp(self,
+              theta,
+              inputs,
+              # this must be none ideally (added separately)
+              paddings=None,
+              class_weights=None,
+              class_ids=None,
+              class_probabilities=None):
+        """Computes logit, cross entropy etc.
+        This function can both work with class_ids, or probability distributions
+        over classes. Exactly one of class_ids or class_probabilities must be
+        provided.
+        Args:
+        theta: A `.NestedMap` object containing weights' values of this layer and
+            its children layers.
+        inputs: a list of a single tensor, or a single tensor with the shape [...,
+            input_dim].
+        class_weights: a tensor with shape [...] containing the weights for each
+            target word.
+        class_ids: a tensor with shape [..., 1] of int32 dtype containing the
+            target class labels.
+        class_probabilities: a tensor with shape [..., num_classes] of float
+            values indicating class-membership probabilities.
+        Returns:
+        A `.NestedMap` containing the following fields
+        - logits: with shape [..., num_classes]. Unnormalized softmax's logits.
+        - per_example_argmax: with shape [...]. argmax of i-th example.
+        - per_example_xent: with shape [...]. Cross entropy between i-th example's
+            prediction and its label.
+        - per_example_weight: with shape [...]. class_weights casted to
+            this layer's dtype.
+        - total_xent: A scalar. The sum of per_example_weight * per_example_xent.
+        - total_weight: A scalar. The sum of per_example_weight.
+        - avg_xent: A scalar. total_loss / total_weight.
+        """
+        p = self.params
+        if(class_weights == None and class_ids == None):
+            class_weights = self.class_weights[:16]
+            class_ids = self.class_ids[:16]
+        # Consolidate list/single value into a list.
+        if not isinstance(inputs, list):
+            inputs = [inputs]
+
+        # If inputs are matrices already, delegate to _FProp2D.
+        if inputs[0].shape.ndims == 2:
+            return self._FProp2D(theta, inputs, class_weights, class_ids,
+                                 class_probabilities)
+
+        # Remembers the original shape[1:-1].
+        shape_mid = tf.shape(inputs[0])[1:-1]
+
+        # Reshape inputs to matrices, labels to vectors, etc.
+        inputs = [
+            tf.reshape(x, py_utils.ToStaticShape([-1, p.input_dim])) for x in inputs
+        ]
+        class_weights = tf.reshape(class_weights, [-1])
+        if class_ids is not None:
+            class_ids = tf.reshape(class_ids, [-1, 1])
+        if class_probabilities is not None:
+            class_probabilities = tf.reshape(
+                class_probabilities, [-1, p.num_classes])
+
+        # Delegates to _FProp2D.
+        xent_loss = self._FProp2D(theta, inputs, class_weights, class_ids,
+                                  class_probabilities)
+
+        # Reshapes xent_loss fields according to the inputs' shape.
+        xent_loss.logits = tf.reshape(
+            xent_loss.logits, tf.concat([[-1], shape_mid, [p.num_classes]], axis=0))
+
+        per_example_shape = tf.concat([[-1], shape_mid], axis=0)
+        xent_loss.per_example_argmax = tf.reshape(xent_loss.per_example_argmax,
+                                                  per_example_shape)
+
+        xent_loss.per_example_xent = tf.reshape(xent_loss.per_example_xent,
+                                                per_example_shape)
+
+        xent_loss.per_example_weight = tf.reshape(xent_loss.per_example_weight,
+                                                  per_example_shape)
+        return xent_loss
+
+
+class GPipeImageProcessingSoftmaxLayer(SimpleFullSoftmax):
+    """GPipe compatible softmax layer for image processing"""
+    @classmethod
+    def Params(cls):
+        p = super().Params()
+        return p
+
+    def FProp(self, theta, inputs):
+        p = self.params
+        if not isinstance(inputs, list):
+            inputs = [inputs]
+
+        # If inputs are matrices already, delegate to _FProp2D.
+        if inputs[0].shape.ndims == 2:
+            return self.FProp2D(theta, inputs)
+
+    def FProp2D(self, theta, inputs):
+        p = self.params
+        inputs = self._GetInputs(inputs)
+        logits = self.Logits(theta, inputs)
+        return logits
 
 
 class FocalFullSoftmax(SimpleFullSoftmax):

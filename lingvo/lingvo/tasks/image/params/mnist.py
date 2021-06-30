@@ -76,7 +76,7 @@ class GPipeLeNet5(Base):
     DROP = 0.2
     BATCH_SIZE = 32
     GPUS = 1
-    SPLITS = [6]  # [2 * (i + 1) for i in range(GPUS)]
+    SPLITS = [7]  # [2 * (i + 1) for i in range(GPUS)]
     LAYERS = SPLITS[-1]
     NUM_MICRO_BATCHES = 16
 

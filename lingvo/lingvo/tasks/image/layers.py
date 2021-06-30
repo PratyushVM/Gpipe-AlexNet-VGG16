@@ -29,7 +29,7 @@ class GPipeLenet5PipeLine(gpipe.PipeliningLayer):
         p.Define('pool2', layers.PoolingLayer.Params(), '')
         p.Define('fc1', layers.FCLayer.Params(), '')
         p.Define('fc2', layers.FCLayer.Params(), '')
-        p.Define('sm1', layers.SimpleFullSoftmax.Params(), '')
+        p.Define('sm1', layers.GPipeImageProcessingSoftmaxLayer.Params(), '')
         p.Define('input_shape', (0, 0, 0, 0), 'the shape of the input data')
         p.Define('class_weights', None, 'the default class weight')
         p.Define('class_ids', None, 'The default class labels')
