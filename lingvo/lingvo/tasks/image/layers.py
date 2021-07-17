@@ -41,9 +41,9 @@ class GPipeLenet5PipeLine(gpipe.PipeliningLayer):
         super().__init__(params)
         p = self.params
         p.conv1.Set(name='conv1', filter_shape=p.filter_shapes[0], filter_stride=(1, 1),
-                    batch_norm=p.batch_norm)
+                    batch_norm=p.batch_norm, activation='TANH', bias=True)
         p.conv2.Set(name='conv2', filter_shape=p.filter_shapes[1], filter_stride=(1, 1),
-                    batch_norm=p.batch_norm)
+                    batch_norm=p.batch_norm, activation='TANH', bias=True)
         p.pool1.Set(
             name='pool1', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
         p.pool2.Set(
@@ -58,8 +58,8 @@ class GPipeLenet5PipeLine(gpipe.PipeliningLayer):
         temp = layers.PoolingLayer(p.pool2)
         shape = temp.OutShape(shape)
         p.fc1.Set(name='fc1', input_dim=np.prod(shape[1:]),
-                  output_dim=1000)
-        p.fc2.Set(name='fc2', input_dim=1000, output_dim=p.softmax_input_dim)
+                  output_dim=120)
+        p.fc2.Set(name='fc2', input_dim=120, output_dim=p.softmax_input_dim)
         p.sm1.name = 'sm1'
         p.sm1.input_dim = p.softmax_input_dim
         p.sm1.num_classes = p.softmax_num_classes

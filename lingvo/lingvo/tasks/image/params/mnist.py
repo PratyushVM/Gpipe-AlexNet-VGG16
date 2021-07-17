@@ -57,11 +57,11 @@ class LeNet5(Base):
         p.name = 'lenet5'
         # Overall architecture:
         #   conv, maxpool, conv, maxpool, fc, fc, softmax
-        p.filter_shapes = [(5, 5, 1, 20), (5, 5, 20, 50)]
+        p.filter_shapes = [(5, 5, 1, 6), (5, 5, 6, 16)]
         p.window_shapes = [(2, 2), (2, 2)]
         p.batch_norm = self.BN
         p.dropout_prob = self.DROP
-        p.softmax.input_dim = 300
+        p.softmax.input_dim = 84
         p.softmax.num_classes = 10
         p.train.save_interval_seconds = 10  # More frequent checkpoints.
         p.eval.samples_per_summary = 0  # Eval the whole set.
@@ -78,24 +78,25 @@ class GPipeLeNet5(Base):
     GPUS = 1
     SPLITS = [7]  # [2 * (i + 1) for i in range(GPUS)]
     LAYERS = SPLITS[-1]
-    NUM_MICRO_BATCHES = 4
+    NUM_MICRO_BATCHES = 8
 
     def Task(self):
         p = classifier.GPipeModel.Params()
         p.name = 'gpipelenet5'
-        p.convarch = convarch_layers.GPipeConvArch.CommonParams(filter_shapes=[(5, 5, 1, 20), (5, 5, 20, 50)],
+        p.convarch = convarch_layers.GPipeConvArch.CommonParams(filter_shapes=[(5, 5, 1, 6), (5, 5, 6, 16)],
                                                                 window_shapes=[
                                                                     (2, 2), (2, 2)],
                                                                 batch_norm=self.BN,
                                                                 dropout_prob=self.DROP,
-                                                                softmax_input_dim=300,
+                                                                softmax_input_dim=84,
                                                                 softmax_num_classes=10,
                                                                 batch_size=self.BATCH_SIZE,
                                                                 number_micro_batches=self.NUM_MICRO_BATCHES,
                                                                 splits=self.SPLITS)
         p.train.save_interval_seconds = 10  # More frequent checkpoints.
         p.eval.samples_per_summary = 0  # Eval the whole set.
-
+        p.softmax.input_dim = 84
+        p.softmax.num_classes = 10
         p.train.max_steps = 5 * (60255//256)  # 5 epochs
         print('finished getting params')
         return p

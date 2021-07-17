@@ -133,7 +133,7 @@ class ModelV1(BaseClassifier):
         assert len(p.filter_shapes) == len(p.window_shapes)
 
         # A few conv + max pooling layers.
-        shape = [None] + list(p.input.data_shape)
+        shape = [tf.flags.FLAGS.minibatch_size] + list(p.input.data_shape)
         conv_params = []
         pooling_params = []
         for i, (kernel, window) in enumerate(zip(p.filter_shapes, p.window_shapes)):
@@ -141,7 +141,7 @@ class ModelV1(BaseClassifier):
                 name='conv%d' % i,
                 filter_shape=kernel,
                 filter_stride=(1, 1),
-                batch_norm=p.batch_norm))
+                batch_norm=p.batch_norm, activation='TANH', bias=True))
             pooling_params.append(layers.PoolingLayer.Params().Set(
                 name='pool%d' % i, window_shape=window, window_stride=window))
         self.CreateChildren('conv', conv_params)
@@ -161,15 +161,15 @@ class ModelV1(BaseClassifier):
             layers.FCLayer.Params().Set(
                 name='fc1',
                 input_dim=np.prod(shape[1:]),
-                output_dim=1000))
+                output_dim=120, activation='TANH'))
 
         # FC layer to project down to p.softmax.input_dim.
         self.CreateChild(
             'fc2',
             layers.FCLayer.Params().Set(
                 name='fc2',
-                input_dim=1000,
-                output_dim=p.softmax.input_dim))
+                input_dim=120,
+                output_dim=p.softmax.input_dim, activation='TANH'))
         self.CreateChild('softmax', p.softmax)
 
     def FPropTower(self, theta, input_batch):
