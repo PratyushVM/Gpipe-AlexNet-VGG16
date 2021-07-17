@@ -50,13 +50,13 @@ class LeNet5(Base):
     """LeNet params for MNIST classification."""
 
     BN = False
-    DROP = 0.2
+    DROP = 0.0
 
     def Task(self):
         p = classifier.ModelV1.Params()
         p.name = 'lenet5'
         # Overall architecture:
-        #   conv, maxpool, conv, maxpool, fc, softmax.
+        #   conv, maxpool, conv, maxpool, fc, fc, softmax
         p.filter_shapes = [(5, 5, 1, 20), (5, 5, 20, 50)]
         p.window_shapes = [(2, 2), (2, 2)]
         p.batch_norm = self.BN
@@ -65,7 +65,7 @@ class LeNet5(Base):
         p.softmax.num_classes = 10
         p.train.save_interval_seconds = 10  # More frequent checkpoints.
         p.eval.samples_per_summary = 0  # Eval the whole set.
-        p.train.max_steps = 470  # epochs
+        p.train.max_steps = 5 * (60255//256)  # 5 epochs
 
         return p
 
@@ -73,12 +73,12 @@ class LeNet5(Base):
 @model_registry.RegisterSingleTaskModel
 class GPipeLeNet5(Base):
     BN = False
-    DROP = 0.2
+    DROP = 0.0
     BATCH_SIZE = 32
     GPUS = 1
     SPLITS = [7]  # [2 * (i + 1) for i in range(GPUS)]
     LAYERS = SPLITS[-1]
-    NUM_MICRO_BATCHES = 16
+    NUM_MICRO_BATCHES = 4
 
     def Task(self):
         p = classifier.GPipeModel.Params()
@@ -96,6 +96,6 @@ class GPipeLeNet5(Base):
         p.train.save_interval_seconds = 10  # More frequent checkpoints.
         p.eval.samples_per_summary = 0  # Eval the whole set.
 
-        p.train.max_steps = 570
+        p.train.max_steps = 5 * (60255//256)  # 5 epochs
         print('finished getting params')
         return p

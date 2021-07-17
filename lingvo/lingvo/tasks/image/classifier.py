@@ -157,10 +157,18 @@ class ModelV1(BaseClassifier):
 
         # FC layer to project down to p.softmax.input_dim.
         self.CreateChild(
-            'fc',
+            'fc1',
             layers.FCLayer.Params().Set(
-                name='fc',
+                name='fc1',
                 input_dim=np.prod(shape[1:]),
+                output_dim=1000))
+
+        # FC layer to project down to p.softmax.input_dim.
+        self.CreateChild(
+            'fc2',
+            layers.FCLayer.Params().Set(
+                name='fc2',
+                input_dim=1000,
                 output_dim=p.softmax.input_dim))
         self.CreateChild('softmax', p.softmax)
 
@@ -179,7 +187,10 @@ class ModelV1(BaseClassifier):
                 act = tf.nn.dropout(
                     act, rate=p.dropout_prob, seed=p.random_seed)
         # FC
-        act = self.fc.FProp(theta.fc, tf.reshape(
+        act = self.fc1.FProp(theta.fc1, tf.reshape(
+            act, [batch, -1]))
+        # FC
+        act = self.fc2.FProp(theta.fc2, tf.reshape(
             act, [batch, -1]))
 
         # Softmax
