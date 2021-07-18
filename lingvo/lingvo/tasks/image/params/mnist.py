@@ -65,7 +65,7 @@ class LeNet5(Base):
         p.softmax.num_classes = 10
         p.train.save_interval_seconds = 10  # More frequent checkpoints.
         p.eval.samples_per_summary = 0  # Eval the whole set.
-        p.train.max_steps = 5 * (60255//256)  # 5 epochs
+        p.train.max_steps = 5  # * (60255//256)  # 5 epochs
 
         return p
 
@@ -97,6 +97,6 @@ class GPipeLeNet5(Base):
         p.eval.samples_per_summary = 0  # Eval the whole set.
         p.softmax.input_dim = 84
         p.softmax.num_classes = 10
-        p.train.max_steps = 5 * (60255//256)  # 5 epochs
+        p.train.max_steps = 5  # * (60255//256)  # 5 epochs
         print('finished getting params')
         return p
