@@ -77,11 +77,15 @@ def FakeMnistData(tmpdir, train_size=60000, test_size=10000):
     data_path = os.path.join(tmpdir, 'ckpt')
     with tf.Graph().as_default():
         with tf.Session() as sess:
-            x_train = tf.ones((train_size, 28, 28, 1), dtype=tf.uint8)
+            x_train = tf.ones((train_size, 224, 224, 3), dtype=tf.uint8)
             y_train = tf.ones((train_size), dtype=tf.uint8)
-            x_test = tf.ones((test_size, 28, 28, 1), dtype=tf.uint8)
+            x_test = tf.ones((test_size, 224, 224, 3), dtype=tf.uint8)
             y_test = tf.ones((test_size), dtype=tf.uint8)
             sess.run(
                 io_ops.save_v2(data_path, ['x_train', 'y_train', 'x_test', 'y_test'],
                                [''] * 4, [x_train, y_train, x_test, y_test]))
     return data_path
+
+
+if __name__ == '__main__':
+    FakeMnistData('/tmp/data')
