@@ -19,6 +19,7 @@ from lingvo import model_registry
 from lingvo.core import base_model_params
 from lingvo.tasks.image import classifier
 from lingvo.tasks.image import input_generator
+import lingvo.compat as tf
 
 from lingvo.tasks.image import layers as convarch_layers
 
@@ -74,7 +75,7 @@ class LeNet5(Base):
 class GPipeLeNet5(Base):
     BN = False
     DROP = 0.0
-    BATCH_SIZE = 32
+    BATCH_SIZE = tf.flags.FLAGS.minibatch_size
     GPUS = 1
     SPLITS = [7]  # [2 * (i + 1) for i in range(GPUS)]
     LAYERS = SPLITS[-1]
@@ -131,7 +132,7 @@ class VGG16(Base):
 class GPipeVGG16(Base):
     BN = False
     DROP = 0.0
-    BATCH_SIZE = 32
+    BATCH_SIZE = tf.flags.FLAGS.minibatch_size
     GPUS = 1
     SPLITS = [21]  # [2 * (i + 1) for i in range(GPUS)]
     LAYERS = SPLITS[-1]
