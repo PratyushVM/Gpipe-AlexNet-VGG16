@@ -65,7 +65,7 @@ class LeNet5(Base):
         p.softmax.num_classes = 10
         p.train.save_interval_seconds = 10  # More frequent checkpoints.
         p.eval.samples_per_summary = 0  # Eval the whole set.
-        p.train.max_steps = 5  # * (60255//256)  # 5 epochs
+        p.train.max_steps = 5 * (60255//256)  # 5 epochs
 
         return p
 
@@ -97,6 +97,64 @@ class GPipeLeNet5(Base):
         p.eval.samples_per_summary = 0  # Eval the whole set.
         p.softmax.input_dim = 84
         p.softmax.num_classes = 10
-        p.train.max_steps = 5  # * (60255//256)  # 5 epochs
+        p.train.max_steps = 5 * (60255//256)  # 5 epochs
+        print('finished getting params')
+        return p
+
+
+@model_registry.RegisterSingleTaskModel
+class VGG16(Base):
+    """LeNet params for MNIST classification."""
+
+    BN = False
+    DROP = 0.0
+
+    def Task(self):
+        p = classifier.ModelVGG16.Params()
+        p.name = 'vgg16'
+
+        p.filter_shapes = [(3, 3, 1, 32), (3, 3, 32, 64), (3, 3, 64, 128), (3, 3, 128, 128), (3, 3, 128, 256), (3, 3, 256, 256), (
+            3, 3, 256, 256), (3, 3, 256, 512), (3, 3, 512, 512), (3, 3, 512, 512), (3, 3, 512, 512), (3, 3, 512, 512), (3, 3, 512, 512)]
+        p.window_shapes = [(2, 2), (2, 2), (2, 2), (2, 2), (2, 2)]
+        p.batch_norm = self.BN
+        p.dropout_prob = self.DROP
+        p.softmax.input_dim = 4096
+        p.softmax.num_classes = 10
+        p.train.save_interval_seconds = 10  # More frequent checkpoints.
+        p.eval.samples_per_summary = 0  # Eval the whole set.
+        p.train.max_steps = 5 * (60255//256)  # 5 epochs
+
+        return p
+
+
+@model_registry.RegisterSingleTaskModel
+class GPipeVGG16(Base):
+    BN = False
+    DROP = 0.0
+    BATCH_SIZE = 32
+    GPUS = 1
+    SPLITS = [21]  # [2 * (i + 1) for i in range(GPUS)]
+    LAYERS = SPLITS[-1]
+    NUM_MICRO_BATCHES = 8
+
+    def Task(self):
+        p = classifier.GPipeModelVGG16.Params()
+        p.name = 'gpipevgg16'
+        p.convarch = convarch_layers.GPipeConvArchVGG16.CommonParams(filter_shapes=[(3, 3, 1, 32), (3, 3, 32, 64), (3, 3, 64, 128), (3, 3, 128, 128), (3, 3, 128, 256), (3, 3, 256, 256), (
+            3, 3, 256, 256), (3, 3, 256, 512), (3, 3, 512, 512), (3, 3, 512, 512), (3, 3, 512, 512), (3, 3, 512, 512), (3, 3, 512, 512)],
+            window_shapes=[
+            (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)],
+            batch_norm=self.BN,
+            dropout_prob=self.DROP,
+            softmax_input_dim=4096,
+            softmax_num_classes=10,
+            batch_size=self.BATCH_SIZE,
+            number_micro_batches=self.NUM_MICRO_BATCHES,
+            splits=self.SPLITS)
+        p.train.save_interval_seconds = 10  # More frequent checkpoints.
+        p.eval.samples_per_summary = 0  # Eval the whole set.
+        p.softmax.input_dim = 4096
+        p.softmax.num_classes = 10
+        p.train.max_steps = 5 * (60255//256)  # 5 epochs
         print('finished getting params')
         return p
