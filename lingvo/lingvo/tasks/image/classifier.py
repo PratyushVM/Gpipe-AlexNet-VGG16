@@ -132,6 +132,10 @@ class ModelV1(BaseClassifier):
 
         assert len(p.filter_shapes) == len(p.window_shapes)
 
+        Bias = True
+        if p.batch_norm == True:
+            Bias = False
+
         # A few conv + max pooling layers.
         shape = [tf.flags.FLAGS.minibatch_size] + list(p.input.data_shape)
         conv_params = []
@@ -141,7 +145,7 @@ class ModelV1(BaseClassifier):
                 name='conv%d' % i,
                 filter_shape=kernel,
                 filter_stride=(1, 1),
-                batch_norm=p.batch_norm, activation='TANH', bias=True))
+                batch_norm=p.batch_norm, activation='TANH', bias=Bias))
             pooling_params.append(layers.PoolingLayer.Params().Set(
                 name='pool%d' % i, window_shape=window, window_stride=window))
         self.CreateChildren('conv', conv_params)
@@ -499,6 +503,9 @@ class ModelVGG16(BaseClassifier):
         shape = [tf.flags.FLAGS.minibatch_size] + list(p.input.data_shape)
         conv_params = []
         pooling_params = []
+        Bias = True
+        if p.batch_norm == True:
+            Bias = False
 
         # Create Conv children
         for i, kernel in enumerate(p.filter_shapes):
@@ -506,7 +513,7 @@ class ModelVGG16(BaseClassifier):
                 name='conv%d' % i,
                 filter_shape=kernel,
                 filter_stride=(1, 1),
-                batch_norm=p.batch_norm, activation='RELU', bias=True))
+                batch_norm=p.batch_norm, activation='RELU', bias=Bias))
 
         self.CreateChildren('conv', conv_params)
 
@@ -580,22 +587,6 @@ class ModelVGG16(BaseClassifier):
         height, width, depth = p.input.data_shape
         act = tf.reshape(input_batch.data, [batch, height, width, depth])
 
-        # for i in range(len(self.conv)):
-        #     # Conv, BN (optional)
-        #     act, _ = self.conv[i].FProp(theta.conv[i], act)
-        #     # MaxPool
-        #     act = self.pool[i].FProp(theta.pool[i], act)
-        #     # Dropout (optional)
-        #     if p.dropout_prob > 0.0 and not self.do_eval:
-        #         act = tf.nn.dropout(
-        #             act, rate=p.dropout_prob, seed=p.random_seed)
-        # # FC
-        # act = self.fc1.FProp(theta.fc1, tf.reshape(
-        #     act, [batch, -1]))
-        # # FC
-        # act = self.fc2.FProp(theta.fc2, tf.reshape(
-        #     act, [batch, -1]))
-
         act, _ = self.conv[0].FProp(theta.conv[0], act)
         act, _ = self.conv[1].FProp(theta.conv[1], act)
         act = self.pool[0].FProp(theta.pool[0], act)
@@ -623,6 +614,156 @@ class ModelVGG16(BaseClassifier):
         act = self.fc1.FProp(theta.fc1, tf.reshape(
             act, [batch, -1]))
         # FC
+        act = self.fc2.FProp(theta.fc2, tf.reshape(
+            act, [batch, -1]))
+
+        # Softmax
+        labels = tf.cast(input_batch.label, tf.int64)
+        xent = self.softmax.FProp(
+            theta=theta.softmax,
+            inputs=act,
+            class_weights=input_batch.weight,
+            class_ids=labels)
+
+        self._AddSummary(input_batch, xent.per_example_argmax)
+
+        rets = {
+            'loss': (xent.avg_xent, batch),
+            'log_pplx': (xent.avg_xent, batch),
+            'num_preds': (batch, 1),
+        }
+        if self.do_eval:
+            acc1 = self._Accuracy(1, xent.logits, labels, input_batch.weight)
+            acc5 = self._Accuracy(5, xent.logits, labels, input_batch.weight)
+            rets.update(
+                accuracy=(acc1, batch),
+                acc5=(acc5, batch),
+                error=(1. - acc1, batch),
+                error5=(1. - acc5, batch))
+        return rets, {'loss': xent.per_example_xent}
+
+    def Decode(self, input_batch):
+        with tf.name_scope('decode'):
+            return self.FPropDefaultTheta(input_batch)[0]
+
+    def CreateDecoderMetrics(self):
+        return {
+            'num_samples_in_batch': metrics.AverageMetric(),
+        }
+
+    def PostProcessDecodeOut(self, dec_out_dict, dec_metrics_dict):
+        dec_metrics_dict['num_samples_in_batch'].Update(
+            dec_out_dict['num_samples_in_batch'][0])
+
+
+class ModelAlexNet(BaseClassifier):
+    """CNNs with maxpooling followed by a softmax."""
+
+    @classmethod
+    def Params(cls):
+        p = super().Params()
+        p.Define(
+            'filter_shapes', [(0, 0, 0, 0)],
+            'Conv filter shapes. Must be a list of sequences of 4. '
+            'Elements are in order of height, width, in_channel, out_channel')
+        p.Define(
+            'window_shapes', [(0, 0)],
+            'Max pooling window shapes. Must be a list of sequences of 2. '
+            'Elements are in order of height, width.')
+        p.Define('batch_norm', False, 'Apply BN or not after the conv.')
+        p.Define('dropout_prob', 0.0,
+                 'Probability of the dropout applied after pooling.')
+
+        tp = p.train
+        tp.learning_rate = 1e-4  # Adam base LR.
+        tp.lr_schedule = (
+            schedule.LinearRampupExponentialDecayScaledByNumSplitSchedule.Params()
+            .Set(warmup=100, decay_start=100000, decay_end=1000000, min=0.1))
+        return p
+
+    def __init__(self, params):
+        super().__init__(params)
+        p = self.params
+        assert p.name
+
+        # assert len(p.filter_shapes) == len(p.window_shapes)
+
+        shape = [tf.flags.FLAGS.minibatch_size] + list(p.input.data_shape)
+        conv_params = []
+        pooling_params = []
+        Bias = True
+        if p.batch_norm == True:
+            Bias = False
+
+        # Create Conv children
+        for i, kernel in enumerate(p.filter_shapes):
+            conv_params.append(layers.ConvLayer.Params().Set(
+                name='conv%d' % i,
+                filter_shape=kernel,
+                filter_stride=(1, 1),
+                batch_norm=p.batch_norm, activation='RELU', bias=Bias))
+
+        self.CreateChildren('conv', conv_params)
+
+        # Create Pooling children
+        for i, window in enumerate(p.window_shapes):
+            pooling_params.append(layers.PoolingLayer.Params().Set(
+                name='pool%d' % i, window_shape=window, window_stride=window))
+
+        self.CreateChildren('pool', pooling_params)
+
+        # Finding Shape for fc1 input_dim
+        shape = self.conv[0].OutShape(shape)
+        shape = self.pool[0].OutShape(shape)
+
+        shape = self.conv[1].OutShape(shape)
+        shape = self.pool[1].OutShape(shape)
+
+        shape = self.conv[2].OutShape(shape)
+        shape = self.conv[3].OutShape(shape)
+        shape = self.conv[4].OutShape(shape)
+        shape = self.pool[2].OutShape(shape)
+
+        # FC1 layer
+        self.CreateChild(
+            'fc1',
+            layers.FCLayer.Params().Set(
+                name='fc1',
+                input_dim=np.prod(shape[1:]),
+                output_dim=4096, activation='RELU'))
+
+        # FC2 layer to project down to p.softmax.input_dim.
+        self.CreateChild(
+            'fc2',
+            layers.FCLayer.Params().Set(
+                name='fc2',
+                input_dim=4096,
+                output_dim=p.softmax.input_dim, activation='RELU'))
+
+        self.CreateChild('softmax', p.softmax)
+
+    def FPropTower(self, theta, input_batch):
+        p = self.params
+        batch = tf.shape(input_batch.data)[0]
+        height, width, depth = p.input.data_shape
+        act = tf.reshape(input_batch.data, [batch, height, width, depth])
+
+        act, _ = self.conv[0].FProp(theta.conv[0], act)
+        act = self.pool[0].FProp(theta.pool[0], act)
+
+        act, _ = self.conv[1].FProp(theta.conv[1], act)
+        act = self.pool[1].FProp(theta.pool[1], act)
+
+        act, _ = self.conv[2].FProp(theta.conv[2], act)
+        act, _ = self.conv[3].FProp(theta.conv[3], act)
+        act, _ = self.conv[4].FProp(theta.conv[4], act)
+        act = self.pool[2].FProp(theta.pool[2], act)
+
+        # FC1
+        act = self.fc1.FProp(theta.fc1, tf.reshape(
+            act, [batch, -1]))
+
+        # FC2
         act = self.fc2.FProp(theta.fc2, tf.reshape(
             act, [batch, -1]))
 

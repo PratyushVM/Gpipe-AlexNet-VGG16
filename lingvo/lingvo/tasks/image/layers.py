@@ -40,10 +40,15 @@ class GPipeLenet5PipeLine(gpipe.PipeliningLayer):
     def __init__(self, params):
         super().__init__(params)
         p = self.params
+
+        Bias = True
+        if p.batch_norm == True:
+            Bias = False
+
         p.conv1.Set(name='conv1', filter_shape=p.filter_shapes[0], filter_stride=(1, 1),
-                    batch_norm=p.batch_norm, activation='TANH', bias=True)
+                    batch_norm=p.batch_norm, activation='TANH', bias=Bias)
         p.conv2.Set(name='conv2', filter_shape=p.filter_shapes[1], filter_stride=(1, 1),
-                    batch_norm=p.batch_norm, activation='TANH', bias=True)
+                    batch_norm=p.batch_norm, activation='TANH', bias=Bias)
         p.pool1.Set(
             name='pool1', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
         p.pool2.Set(
@@ -202,44 +207,48 @@ class GPipeVGG16PipeLine(gpipe.PipeliningLayer):
     def __init__(self, params):
         super().__init__(params)
         p = self.params
+        Bias = True
+        if p.batch_norm == True:
+            Bias = False
+
         p.conv1_1.Set(name='conv1_1', filter_shape=p.filter_shapes[0], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.conv1_2.Set(name='conv1_2', filter_shape=p.filter_shapes[1], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.pool1.Set(
             name='pool1', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
 
         p.conv2_1.Set(name='conv2_1', filter_shape=p.filter_shapes[2], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.conv2_2.Set(name='conv2_2', filter_shape=p.filter_shapes[3], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.pool2.Set(
             name='pool2', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
 
         p.conv3_1.Set(name='conv3_1', filter_shape=p.filter_shapes[4], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.conv3_2.Set(name='conv3_2', filter_shape=p.filter_shapes[5], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.conv3_3.Set(name='conv3_3', filter_shape=p.filter_shapes[6], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.pool3.Set(
             name='pool3', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
 
         p.conv4_1.Set(name='conv4_1', filter_shape=p.filter_shapes[7], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.conv4_2.Set(name='conv4_2', filter_shape=p.filter_shapes[8], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.conv4_3.Set(name='conv4_3', filter_shape=p.filter_shapes[9], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.pool4.Set(
             name='pool4', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
 
         p.conv5_1.Set(name='conv5_1', filter_shape=p.filter_shapes[10], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.conv5_2.Set(name='conv5_2', filter_shape=p.filter_shapes[11], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.conv5_3.Set(name='conv5_3', filter_shape=p.filter_shapes[12], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=True)
+                      batch_norm=p.batch_norm, bias=Bias)
         p.pool5.Set(
             name='pool5', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
 
