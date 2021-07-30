@@ -33,31 +33,32 @@ tf.flags.DEFINE_string("out", "", "The output checkpoint path prefix.")
 
 
 def main(argv):
-  del argv  # Unused.
+    del argv  # Unused.
 
-  dataset = getattr(tf.keras.datasets, FLAGS.dataset)
-  (x_train, y_train), (x_test, y_test) = dataset.load_data()
+    dataset = getattr(tf.keras.datasets, FLAGS.dataset)
+    (x_train, y_train), (x_test, y_test) = dataset.load_data()
 
-  def wrap(val):
-    dtype = tf.as_dtype(val.dtype)
-    assert dtype != tf.string  # tf.string is not supported by py_func.
-    return tf.py_func(lambda: val, [], dtype)
+    def wrap(val):
+        dtype = tf.as_dtype(val.dtype)
+        assert dtype != tf.string  # tf.string is not supported by py_func.
+        return tf.py_func(lambda: val, [], dtype)
 
-  out_prefix = FLAGS.out or os.path.join("/tmp", FLAGS.dataset, FLAGS.dataset)
-  tf.logging.info("Save %s dataset to %s ckpt." %
-                       (FLAGS.dataset, out_prefix))
+    out_prefix = FLAGS.out or os.path.join(
+        "/tmp", FLAGS.dataset, FLAGS.dataset)
+    tf.logging.info("Save %s dataset to %s ckpt." %
+                    (FLAGS.dataset, out_prefix))
 
-  with tf.Session() as sess:
-    sess.run(
-        io_ops.save_v2(
-            prefix=out_prefix,
-            tensor_names=["x_train", "y_train", "x_test", "y_test"],
-            shape_and_slices=[""] * 4,
-            tensors=[wrap(x_train),
-                     wrap(y_train),
-                     wrap(x_test),
-                     wrap(y_test)]))
+    with tf.Session() as sess:
+        sess.run(
+            io_ops.save_v2(
+                prefix=out_prefix,
+                tensor_names=["x_train", "y_train", "x_test", "y_test"],
+                shape_and_slices=[""] * 4,
+                tensors=[wrap(x_train),
+                         wrap(y_train),
+                         wrap(x_test),
+                         wrap(y_test)]))
 
 
 if __name__ == "__main__":
-  tf.app.run(main)
+    tf.app.run(main)

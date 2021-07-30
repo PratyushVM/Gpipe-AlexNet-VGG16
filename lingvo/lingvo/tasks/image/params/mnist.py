@@ -20,7 +20,6 @@ from lingvo.core import base_model_params
 from lingvo.tasks.image import classifier
 from lingvo.tasks.image import input_generator
 import lingvo.compat as tf
-
 from lingvo.tasks.image import layers as convarch_layers
 
 
@@ -73,10 +72,10 @@ class LeNet5(Base):
 @model_registry.RegisterSingleTaskModel
 class GPipeLeNet5(Base):
 
-    BN = True
+    BN = False
     DROP = 0.0
     BATCH_SIZE = tf.flags.FLAGS.minibatch_size
-    GPUS = 1
+    # GPUS = 1
     SPLITS = [7]  # [2 * (i + 1) for i in range(GPUS)]
     LAYERS = SPLITS[-1]
     NUM_MICRO_BATCHES = 8
@@ -98,7 +97,7 @@ class GPipeLeNet5(Base):
         p.eval.samples_per_summary = 0  # Eval the whole set.
         p.softmax.input_dim = 84
         p.softmax.num_classes = 10
-        p.train.max_steps = 5  # * (60255//256)  # 5 epochs
+        p.train.max_steps = 5 * (60255//256)  # 5 epochs
         print('finished getting params')
         return p
 
@@ -133,7 +132,7 @@ class GPipeVGG16(Base):
     BN = False
     DROP = 0.0
     BATCH_SIZE = tf.flags.FLAGS.minibatch_size
-    GPUS = 1
+    # GPUS = 1
     SPLITS = [21]  # [2 * (i + 1) for i in range(GPUS)]
     LAYERS = SPLITS[-1]
     NUM_MICRO_BATCHES = 8
@@ -171,8 +170,8 @@ class AlexNet(Base):
         p = classifier.ModelAlexNet.Params()
         p.name = 'alexnet'
 
-        p.filter_shapes = [(56, 56, 1, 96), (7, 7, 96, 256),
-                           (1, 1, 256, 384), (1, 1, 384, 384), (1, 1, 384, 256)]
+        p.filter_shapes = [(11, 11, 1, 96), (5, 5, 96, 256),
+                           (3, 3, 256, 384), (3, 3, 384, 384), (3, 3, 384, 256)]
         p.window_shapes = [(2, 2), (2, 2), (2, 2)]
         p.batch_norm = self.BN
         p.dropout_prob = self.DROP
@@ -183,3 +182,42 @@ class AlexNet(Base):
         p.train.max_steps = 5  # * (60255//256)  # 5 epochs
 
         return p
+
+
+@model_registry.RegisterSingleTaskModel
+class GPipeAlexNet(Base):
+
+    BN = False
+    DROP = 0.0
+    BATCH_SIZE = tf.flags.FLAGS.minibatch_size
+    # GPUS = 1
+    SPLITS = [11]  # [2 * (i + 1) for i in range(GPUS)]
+    LAYERS = SPLITS[-1]
+    NUM_MICRO_BATCHES = 8
+
+    def Task(self):
+        p = classifier.GPipeModelVGG16.Params()
+        p.name = 'gpipealexnet'
+        p.convarch = convarch_layers.GPipeConvArchAlexNet.CommonParams(filter_shapes=[(11, 11, 1, 96), (5, 5, 96, 256),
+                                                                                      (3, 3, 256, 384), (3, 3, 384, 384), (3, 3, 384, 256)],
+                                                                       window_shapes=[
+            (2, 2), (2, 2), (2, 2)],
+            batch_norm=self.BN,
+            dropout_prob=self.DROP,
+            softmax_input_dim=4096,
+            softmax_num_classes=10,
+            batch_size=self.BATCH_SIZE,
+            number_micro_batches=self.NUM_MICRO_BATCHES,
+            splits=self.SPLITS)
+        p.train.save_interval_seconds = 10  # More frequent checkpoints.
+        p.eval.samples_per_summary = 0  # Eval the whole set.
+        p.softmax.input_dim = 4096
+        p.softmax.num_classes = 10
+        p.train.max_steps = 5 * (60255//256)  # 5 epochs
+        print('finished getting params')
+        return p
+
+
+""" Note : GPipe currently does not support BN for our experimental convlayers 
+    Whereas Lingvo supports BN and gives moving mean, moving variance,etc -
+    Use BN = True only in the case of Non-GPipe """
