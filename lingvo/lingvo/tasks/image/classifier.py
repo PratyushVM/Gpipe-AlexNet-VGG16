@@ -804,3 +804,56 @@ class ModelAlexNet(BaseClassifier):
     def PostProcessDecodeOut(self, dec_out_dict, dec_metrics_dict):
         dec_metrics_dict['num_samples_in_batch'].Update(
             dec_out_dict['num_samples_in_batch'][0])
+
+
+class GPipeModelAlexNet(BaseClassifier):
+    """VGG16 model with GPipe"""
+    """call to params() will call the base classifier params"""
+    @classmethod
+    def Params(cls):
+        p = super().Params()
+        p.Define('convarch', convarch_layers.GPipeConvArchAlexNet.CommonParams(),
+                 'the layers of the image model you want')
+        tp = p.train
+        tp.learning_rate = 1e-4  # Adam base LR.
+        tp.lr_schedule = (
+            schedule.LinearRampupExponentialDecayScaledByNumSplitSchedule.Params()
+            .Set(warmup=100, decay_start=100000, decay_end=1000000, min=0.1))
+        return p
+
+    def __init__(self, params):
+        super().__init__(params)
+        p = self.params
+        p.convarch.pipelinestack.input_shape = p.input.data_shape
+        self.CreateChild('pipelinedmodel', p.convarch)
+
+    def FPropTower(self, theta, input_batch):
+
+        p = self.params
+        batch = tf.shape(input_batch.data)[0]
+        height, width, depth = p.input.data_shape
+        act = tf.reshape(input_batch.data, [batch, height, width, depth])
+
+        self.pipelinedmodel.pipelinestack.class_weights = input_batch.weight
+        labels = tf.cast(input_batch.label, tf.int64)
+        self.pipelinedmodel.pipelinestack.class_ids = labels
+        xent = self.pipelinedmodel.FProp(theta.pipelinedmodel, act, class_weights=input_batch.weight,
+                                         class_ids=labels)
+        #self._AddSummary(input_batch, xent.per_example_argmax)
+        self._AddSummary(input_batch, xent.per_example_argmax)
+
+        rets = {
+            'loss': (xent.avg_xent, batch),
+            'log_pplx': (xent.avg_xent, batch),
+            'num_preds': (batch, 1),
+        }
+        if self.do_eval:
+            acc1 = self._Accuracy(1, xent.logits, labels, input_batch.weight)
+            acc5 = self._Accuracy(5, xent.logits, labels, input_batch.weight)
+            rets.update(
+                accuracy=(acc1, batch),
+                acc5=(acc5, batch),
+                error=(1. - acc1, batch),
+                error5=(1. - acc5, batch))
+
+        return rets, {'loss': xent.per_example_xent}

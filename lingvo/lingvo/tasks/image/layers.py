@@ -426,8 +426,8 @@ class GPipeConvArchAlexNet(base_layer.BaseLayer):
                      number_micro_batches=0,
                      splits=[0, 0, 0, 0],
                      input_shape=(0, 0, 0, 0)):
-        p = GPipeConvArchVGG16.Params()
-        p.name = 'GPipeVGG16'
+        p = GPipeConvArchAlexNet.Params()
+        p.name = 'GPipeAlexNet'
         p.pipelinestack.filter_shapes = filter_shapes
         p.pipelinestack.window_shapes = window_shapes
         p.pipelinestack.batch_norm = batch_norm
@@ -490,115 +490,63 @@ class GPipeAlexNetPipeLine(gpipe.PipeliningLayer):
         if p.batch_norm == True:
             Bias = False
 
-        p.conv1_1.Set(name='conv1_1', filter_shape=p.filter_shapes[0], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
-        p.conv1_2.Set(name='conv1_2', filter_shape=p.filter_shapes[1], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
+        p.conv1.Set(name='conv1', filter_shape=p.filter_shapes[0], filter_stride=(1, 1),
+                    batch_norm=p.batch_norm, bias=Bias, activation='RELU')
+        p.conv2.Set(name='conv2', filter_shape=p.filter_shapes[1], filter_stride=(1, 1),
+                    batch_norm=p.batch_norm, bias=Bias, activation='RELU')
         p.pool1.Set(
             name='pool1', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
 
-        p.conv2_1.Set(name='conv2_1', filter_shape=p.filter_shapes[2], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
-        p.conv2_2.Set(name='conv2_2', filter_shape=p.filter_shapes[3], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
+        p.conv3.Set(name='conv3', filter_shape=p.filter_shapes[2], filter_stride=(1, 1),
+                    batch_norm=p.batch_norm, bias=Bias, activation='RELU')
+        p.conv4.Set(name='conv4', filter_shape=p.filter_shapes[3], filter_stride=(1, 1),
+                    batch_norm=p.batch_norm, bias=Bias, activation='RELU')
         p.pool2.Set(
             name='pool2', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
 
-        p.conv3_1.Set(name='conv3_1', filter_shape=p.filter_shapes[4], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
-        p.conv3_2.Set(name='conv3_2', filter_shape=p.filter_shapes[5], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
-        p.conv3_3.Set(name='conv3_3', filter_shape=p.filter_shapes[6], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
+        p.conv5.Set(name='conv5', filter_shape=p.filter_shapes[4], filter_stride=(1, 1),
+                    batch_norm=p.batch_norm, bias=Bias, activation='RELU')
         p.pool3.Set(
             name='pool3', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
 
-        p.conv4_1.Set(name='conv4_1', filter_shape=p.filter_shapes[7], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
-        p.conv4_2.Set(name='conv4_2', filter_shape=p.filter_shapes[8], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
-        p.conv4_3.Set(name='conv4_3', filter_shape=p.filter_shapes[9], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
-        p.pool4.Set(
-            name='pool4', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
-
-        p.conv5_1.Set(name='conv5_1', filter_shape=p.filter_shapes[10], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
-        p.conv5_2.Set(name='conv5_2', filter_shape=p.filter_shapes[11], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
-        p.conv5_3.Set(name='conv5_3', filter_shape=p.filter_shapes[12], filter_stride=(1, 1),
-                      batch_norm=p.batch_norm, bias=Bias)
-        p.pool5.Set(
-            name='pool5', window_shape=p.window_shapes[0], window_stride=p.window_shapes[0])
-
         shape = [tf.flags.FLAGS.minibatch_size] + list(p.input_shape)
-        temp = layers.BaseConv2DLayer(p.conv1_1)
+        temp = layers.BaseConv2DLayer(p.conv1)
         shape = temp.OutShape(shape)
-        temp = layers.BaseConv2DLayer(p.conv1_2)
+        temp = layers.BaseConv2DLayer(p.conv2)
         shape = temp.OutShape(shape)
         temp = layers.PoolingLayer(p.pool1)
         shape = temp.OutShape(shape)
 
-        temp = layers.BaseConv2DLayer(p.conv2_1)
+        temp = layers.BaseConv2DLayer(p.conv3)
         shape = temp.OutShape(shape)
-        temp = layers.BaseConv2DLayer(p.conv2_2)
+        temp = layers.BaseConv2DLayer(p.conv4)
         shape = temp.OutShape(shape)
         temp = layers.PoolingLayer(p.pool2)
         shape = temp.OutShape(shape)
 
-        temp = layers.BaseConv2DLayer(p.conv3_1)
-        shape = temp.OutShape(shape)
-        temp = layers.BaseConv2DLayer(p.conv3_2)
-        shape = temp.OutShape(shape)
-        temp = layers.BaseConv2DLayer(p.conv3_3)
+        temp = layers.BaseConv2DLayer(p.conv5)
         shape = temp.OutShape(shape)
         temp = layers.PoolingLayer(p.pool3)
         shape = temp.OutShape(shape)
 
-        temp = layers.BaseConv2DLayer(p.conv4_1)
-        shape = temp.OutShape(shape)
-        temp = layers.BaseConv2DLayer(p.conv4_2)
-        shape = temp.OutShape(shape)
-        temp = layers.BaseConv2DLayer(p.conv4_3)
-        shape = temp.OutShape(shape)
-        temp = layers.PoolingLayer(p.pool4)
-        shape = temp.OutShape(shape)
-
-        temp = layers.BaseConv2DLayer(p.conv5_1)
-        shape = temp.OutShape(shape)
-        temp = layers.BaseConv2DLayer(p.conv5_2)
-        shape = temp.OutShape(shape)
-        temp = layers.BaseConv2DLayer(p.conv5_3)
-        shape = temp.OutShape(shape)
-        temp = layers.PoolingLayer(p.pool5)
-        shape = temp.OutShape(shape)
-
-        p.fc1.Set(name='fc1', input_dim=np.prod(shape[1:]), output_dim=4096)
-        p.fc2.Set(name='fc2', input_dim=4096, output_dim=4096)
+        p.fc1.Set(name='fc1', input_dim=np.prod(
+            shape[1:]), output_dim=4096, activation='RELU')
+        p.fc2.Set(name='fc2', input_dim=4096,
+                  output_dim=4096, activation='RELU')
 
         p.sm1.name = 'sm1'
         p.sm1.input_dim = p.softmax_input_dim
         p.sm1.num_classes = p.softmax_num_classes
 
         templars = []
-        templars.append(p.conv1_1)
-        templars.append(p.conv1_2)
+        templars.append(p.conv1)
+        templars.append(p.conv2)
         templars.append(p.pool1)
-        templars.append(p.conv2_1)
-        templars.append(p.conv2_2)
+        templars.append(p.conv3)
+        templars.append(p.conv4)
         templars.append(p.pool2)
-        templars.append(p.conv3_1)
-        templars.append(p.conv3_2)
-        templars.append(p.conv3_3)
+        templars.append(p.conv5)
         templars.append(p.pool3)
-        templars.append(p.conv4_1)
-        templars.append(p.conv4_2)
-        templars.append(p.conv4_3)
-        templars.append(p.pool4)
-        templars.append(p.conv5_1)
-        templars.append(p.conv5_2)
-        templars.append(p.conv5_3)
-        templars.append(p.pool5)
         templars.append(p.fc1)
         templars.append(p.fc2)
         templars.append(p.sm1)

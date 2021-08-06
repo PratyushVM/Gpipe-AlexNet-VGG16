@@ -179,7 +179,7 @@ class AlexNet(Base):
         p.softmax.num_classes = 10
         p.train.save_interval_seconds = 10  # More frequent checkpoints.
         p.eval.samples_per_summary = 0  # Eval the whole set.
-        p.train.max_steps = 5  # * (60255//256)  # 5 epochs
+        p.train.max_steps = 5 * (60255//256)  # 5 epochs
 
         return p
 
@@ -196,7 +196,7 @@ class GPipeAlexNet(Base):
     NUM_MICRO_BATCHES = 8
 
     def Task(self):
-        p = classifier.GPipeModelVGG16.Params()
+        p = classifier.GPipeModelAlexNet.Params()
         p.name = 'gpipealexnet'
         p.convarch = convarch_layers.GPipeConvArchAlexNet.CommonParams(filter_shapes=[(11, 11, 1, 96), (5, 5, 96, 256),
                                                                                       (3, 3, 256, 384), (3, 3, 384, 384), (3, 3, 384, 256)],
