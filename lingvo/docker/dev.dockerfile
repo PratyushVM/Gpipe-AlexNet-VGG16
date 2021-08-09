@@ -56,7 +56,7 @@ RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y --no-install-rec
 # Install python 3.8
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys BA6932366A755776
 RUN echo "deb http://ppa.launchpad.net/deadsnakes/ppa/ubuntu bionic main" > /etc/apt/sources.list.d/deadsnakes-ppa-bionic.list
-RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y python3.9 python3.9-distutils
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y python3.9 python3.9-dev python3.9-distutils
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1000
 # bazel assumes the python executable is "python".
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1000
